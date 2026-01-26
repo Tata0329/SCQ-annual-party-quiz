@@ -5,106 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UFI集团年会答题挑战赛</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 使用本地QRCode库 -->
-    <script>
-        // 简化的QRCode生成器
-        function generateQRCode(elementId, text, size = 250) {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = size;
-                canvas.height = size;
-                canvas.id = 'qr-canvas';
-                
-                const container = document.getElementById(elementId);
-                if (!container) {
-                    console.error('找不到二维码容器:', elementId);
-                    return false;
-                }
-                
-                container.innerHTML = '';
-                container.appendChild(canvas);
-                
-                const ctx = canvas.getContext('2d');
-                
-                // 清空画布
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, size, size);
-                
-                // 生成简单的QR码模式
-                const cellSize = 10;
-                const cols = Math.floor(size / cellSize);
-                const rows = Math.floor(size / cellSize);
-                
-                // 生成基于文本的图案
-                let hash = 0;
-                for (let i = 0; i < text.length; i++) {
-                    hash = (hash << 5) - hash + text.charCodeAt(i);
-                    hash = hash & hash;
-                }
-                
-                // 绘制定位图案
-                drawPositionMarker(ctx, 2, 2, cellSize);
-                drawPositionMarker(ctx, cols - 7, 2, cellSize);
-                drawPositionMarker(ctx, 2, rows - 7, cellSize);
-                
-                // 绘制数据区域
-                ctx.fillStyle = '#000000';
-                for (let row = 0; row < rows; row++) {
-                    for (let col = 0; col < cols; col++) {
-                        // 跳过定位图案区域
-                        if ((row < 8 && col < 8) || 
-                            (row < 8 && col > cols - 9) || 
-                            (row > rows - 9 && col < 8)) {
-                            continue;
-                        }
-                        
-                        // 根据哈希值决定是否填充
-                        const value = (hash + row * cols + col) % 2;
-                        if (value === 0) {
-                            ctx.fillRect(col * cellSize, row * cellSize, cellSize - 1, cellSize - 1);
-                        }
-                    }
-                }
-                
-                // 绘制文本
-                ctx.fillStyle = '#000000';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('UFI 2026', size/2, 30);
-                
-                ctx.font = '12px Arial';
-                ctx.fillText('扫描加入答题', size/2, size - 10);
-                
-                console.log('二维码已生成，内容:', text.substring(0, 50) + (text.length > 50 ? '...' : ''));
-                return true;
-                
-            } catch (error) {
-                console.error('生成二维码时出错:', error);
-                // 显示错误信息
-                const container = document.getElementById(elementId);
-                if (container) {
-                    container.innerHTML = `
-                        <div style="color: black; text-align: center; padding: 20px;">
-                            <div style="color: red; margin-bottom: 10px;">二维码生成失败</div>
-                            <div style="word-break: break-all; font-size: 14px; margin: 10px 0;">
-                                请访问: <br>${text}
-                            </div>
-                        </div>
-                    `;
-                }
-                return false;
-            }
-        }
-        
-        function drawPositionMarker(ctx, x, y, cellSize) {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
-            ctx.fillStyle = '#000000';
-            ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
-        }
-    </script>
     <style>
         * {
             margin: 0;
@@ -547,6 +447,16 @@
             color: #ffdd00;
         }
         
+        .qr-url-display {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            color: #333;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -576,6 +486,10 @@
                 font-size: 1.7rem;
                 padding: 20px;
             }
+            
+            .event-title {
+                font-size: 2.2rem;
+            }
         }
         
         @media (max-width: 768px) {
@@ -585,7 +499,7 @@
             }
             
             .event-title {
-                font-size: 2rem;
+                font-size: 1.8rem;
             }
             
             .question-text {
@@ -595,12 +509,27 @@
             .answers-section {
                 grid-template-columns: 1fr;
             }
+            
+            .timer {
+                font-size: 2.5rem;
+                padding: 10px 20px;
+            }
+            
+            .control-panel {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .admin-panel {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <!-- 二维码加入覆盖层 -->
-    <div class="qr-overlay" id="qrOverlay" style="display: none;">
+    <div class="qr-overlay" id="qrOverlay">
         <div class="qr-container">
             <button class="close-qr-btn" id="closeQrBtn">
                 <i class="fas fa-times"></i>
@@ -611,8 +540,13 @@
             
             <div class="qr-code-container" id="qrcode-container">
                 <!-- 二维码将通过JavaScript生成在这里 -->
-                <div style="color: black; text-align: center; padding: 20px;">
-                    <div>正在生成二维码...</div>
+                <div style="color: black; text-align: center; padding: 20px; width: 100%;">
+                    <div id="qr-loading" style="font-size: 18px; margin-bottom: 15px; color: #333;">
+                        <i class="fas fa-spinner fa-spin"></i> 正在生成二维码...
+                    </div>
+                    <div id="qr-url-display" class="qr-url-display" style="display: none;">
+                        <!-- URL将显示在这里 -->
+                    </div>
                 </div>
             </div>
             
@@ -624,7 +558,7 @@
             </div>
             
             <div class="qr-stats">
-                已加入人数: <span id="participantCount">0</span> 人
+                <i class="fas fa-users"></i> 已加入人数: <span id="participantCount">0</span> 人
             </div>
         </div>
     </div>
@@ -802,18 +736,8 @@
         const participantCountElement = document.getElementById('participantCount');
         const liveParticipantCountElement = document.getElementById('liveParticipantCount');
         const qrcodeContainer = document.getElementById('qrcode-container');
-
-        // 生成加入页面的URL
-        function getJoinPageUrl() {
-            const currentUrl = window.location.href;
-            // 如果当前页面是index.html，则join.html在同一目录
-            if (currentUrl.endsWith('index.html') || currentUrl.endsWith('/')) {
-                return currentUrl.replace(/index\.html$/, '').replace(/\/$/, '') + '/join.html';
-            }
-            // 否则在相同目录下
-            const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-            return baseUrl + 'join.html';
-        }
+        const qrLoadingElement = document.getElementById('qr-loading');
+        const qrUrlDisplayElement = document.getElementById('qr-url-display');
 
         // 初始化页面
         function initPage() {
@@ -847,32 +771,150 @@
             console.log("UFI答题系统初始化完成！");
         }
 
+        // 获取加入页面URL
+        function getJoinPageUrl() {
+            // 获取当前页面URL
+            const currentUrl = window.location.href;
+            
+            // 如果是本地文件，使用相对路径
+            if (currentUrl.startsWith('file://')) {
+                return 'join.html';
+            }
+            
+            // 如果是网络访问，构建完整URL
+            try {
+                const urlObj = new URL(currentUrl);
+                const pathParts = urlObj.pathname.split('/');
+                pathParts[pathParts.length - 1] = 'join.html';
+                urlObj.pathname = pathParts.join('/');
+                return urlObj.toString();
+            } catch (error) {
+                // 如果URL解析失败，使用相对路径
+                return 'join.html';
+            }
+        }
+
         // 显示二维码界面
         function showQrCode() {
-            // 生成二维码
+            // 生成加入页面URL
             const joinUrl = getJoinPageUrl();
-            console.log("生成二维码，指向:", joinUrl);
+            console.log("加入页面URL:", joinUrl);
             
-            // 使用本地的QRCode生成器
-            const success = generateQRCode('qrcode-container', joinUrl, 250);
+            // 显示URL（即使二维码不显示，用户也能看到链接）
+            qrUrlDisplayElement.textContent = joinUrl;
+            qrUrlDisplayElement.style.display = 'block';
             
-            if (success) {
-                qrOverlayElement.style.display = 'flex';
-                updateParticipantCount();
-            } else {
-                // 如果二维码生成失败，显示链接
+            // 尝试生成简单的二维码
+            generateSimpleQRCode(joinUrl);
+            
+            // 显示二维码界面
+            qrOverlayElement.style.display = 'flex';
+            updateParticipantCount();
+        }
+
+        // 生成简单的二维码
+        function generateSimpleQRCode(text) {
+            try {
+                // 创建canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 250;
+                canvas.height = 250;
+                canvas.style.display = 'block';
+                canvas.style.margin = '0 auto';
+                canvas.style.border = '1px solid #ddd';
+                
+                const ctx = canvas.getContext('2d');
+                
+                // 清空画布
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, 250, 250);
+                
+                // 绘制边框
+                ctx.strokeStyle = '#006633';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(10, 10, 230, 230);
+                
+                // 绘制UFI文字
+                ctx.fillStyle = '#006633';
+                ctx.font = 'bold 22px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('UFI 2026', 125, 40);
+                
+                // 绘制简单的二维码图案
+                ctx.fillStyle = '#000000';
+                
+                // 绘制定位点（三个大方块）
+                drawPositionMarker(ctx, 30, 30, 7);
+                drawPositionMarker(ctx, 30, 190, 7);
+                drawPositionMarker(ctx, 190, 30, 7);
+                
+                // 生成基于文本的图案
+                const seed = text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                
+                // 绘制数据点
+                for (let y = 0; y < 20; y++) {
+                    for (let x = 0; x < 20; x++) {
+                        // 跳过定位点区域
+                        if ((x < 8 && y < 8) || 
+                            (x < 8 && y > 11) || 
+                            (x > 11 && y < 8)) {
+                            continue;
+                        }
+                        
+                        const px = 50 + x * 8;
+                        const py = 60 + y * 8;
+                        
+                        // 基于种子生成伪随机图案
+                        const value = (seed + x * 20 + y) % 3;
+                        if (value === 0) {
+                            ctx.fillRect(px, py, 6, 6);
+                        }
+                    }
+                }
+                
+                // 绘制底部文字
+                ctx.fillStyle = '#666666';
+                ctx.font = '14px Arial';
+                ctx.fillText('扫描加入答题', 125, 240);
+                
+                // 隐藏加载提示，显示二维码
+                qrLoadingElement.style.display = 'none';
+                qrcodeContainer.innerHTML = '';
+                qrcodeContainer.appendChild(canvas);
+                
+                console.log("二维码生成成功");
+                return true;
+                
+            } catch (error) {
+                console.error("生成二维码时出错:", error);
+                // 显示错误信息和链接
+                qrLoadingElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 二维码生成失败';
                 qrcodeContainer.innerHTML = `
-                    <div style="color: black; text-align: center; padding: 20px;">
-                        <div style="color: red; margin-bottom: 10px;">二维码生成失败</div>
-                        <div style="margin-bottom: 15px;">请手动访问以下链接：</div>
-                        <div style="color: blue; word-break: break-all; font-size: 14px; margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;">
-                            ${joinUrl}
+                    <div style="color: black; text-align: center; padding: 20px; width: 100%;">
+                        <div style="color: #0066cc; font-size: 18px; margin-bottom: 15px;">
+                            <i class="fas fa-link"></i> 请使用以下链接加入
                         </div>
-                        <div style="margin-top: 15px;">请复制链接发送给参会者</div>
+                        <div style="word-break: break-all; font-size: 14px; color: #333; margin: 15px 0; padding: 15px; background: #f8f8f8; border-radius: 8px; border: 1px solid #ddd;">
+                            ${text}
+                        </div>
+                        <div style="color: #666; font-size: 14px; margin-top: 10px;">
+                            请复制链接发送给参会者
+                        </div>
                     </div>
                 `;
-                qrOverlayElement.style.display = 'flex';
+                return false;
             }
+        }
+
+        // 绘制定位标记
+        function drawPositionMarker(ctx, x, y, size) {
+            const cellSize = 10;
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x, y, size * cellSize, size * cellSize);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(x + cellSize, y + cellSize, (size - 2) * cellSize, (size - 2) * cellSize);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x + 2 * cellSize, y + 2 * cellSize, (size - 4) * cellSize, (size - 4) * cellSize);
         }
 
         // 隐藏二维码界面
@@ -912,7 +954,39 @@
             if (newCount > oldCount) {
                 updateParticipantCount();
                 updateRanking();
+                
+                // 显示新用户通知
+                if (newCount > 0 && oldCount > 0) {
+                    const newUser = users[users.length - 1];
+                    showNewUserNotification(newUser.name);
+                }
             }
+        }
+
+        // 显示新用户加入通知
+        function showNewUserNotification(userName) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                background: linear-gradient(90deg, #00cc66, #00994d);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                font-size: 1.6rem;
+                z-index: 1001;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                animation: slideIn 0.5s ease-out;
+            `;
+            
+            notification.innerHTML = `<i class="fas fa-user-plus"></i> ${userName} 加入了比赛`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.5s ease-out';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
         }
 
         // 更新参与者计数
