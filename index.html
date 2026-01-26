@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UFI集团年会答题挑战赛</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -336,9 +335,13 @@
             border-radius: 15px;
             display: inline-block;
             margin-bottom: 30px;
+            min-height: 290px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        #qrcode {
+        #qrcode-img {
             width: 250px;
             height: 250px;
         }
@@ -458,6 +461,16 @@
             animation: pulse 1s infinite;
         }
         
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
         @media (max-width: 1200px) {
             .question-text {
                 font-size: 2.2rem;
@@ -468,11 +481,30 @@
                 padding: 20px;
             }
         }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .event-title {
+                font-size: 2rem;
+            }
+            
+            .question-text {
+                font-size: 1.8rem;
+            }
+            
+            .answers-section {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- 二维码加入覆盖层 -->
-    <div class="qr-overlay" id="qrOverlay">
+    <div class="qr-overlay" id="qrOverlay" style="display: none;">
         <div class="qr-container">
             <button class="close-qr-btn" id="closeQrBtn">
                 <i class="fas fa-times"></i>
@@ -482,7 +514,8 @@
             <div class="qr-subtitle">扫描二维码，输入姓名参与UFI知识竞赛</div>
             
             <div class="qr-code-container">
-                <div id="qrcode"></div>
+                <!-- 使用Google Chart API生成二维码 -->
+                <img id="qrcode-img" width="250" height="250" alt="扫描二维码加入UFI答题">
             </div>
             
             <div class="qr-instructions">
@@ -533,6 +566,14 @@
                 <div class="ranking-title">实时排名</div>
                 <div class="ranking-list" id="ranking-list">
                     <!-- 排名将通过JS动态生成 -->
+                    <div class="ranking-item">
+                        <div class="rank rank-1">1</div>
+                        <div class="user-info">
+                            <div class="user-name">等待选手加入...</div>
+                            <div class="user-time">扫描二维码参与答题</div>
+                        </div>
+                        <div class="score">0</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -648,11 +689,6 @@
         let isAnswered = false;
         let isMultiChoice = false;
 
-        // 获取当前页面URL
-        const currentUrl = window.location.href;
-        const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-        const joinPageUrl = baseUrl + 'join.html';
-
         // DOM元素
         const timerElement = document.getElementById('timer');
         const questionNumberElement = document.getElementById('question-number');
@@ -669,6 +705,7 @@
         const showQrBtnElement = document.getElementById('showQrBtn');
         const participantCountElement = document.getElementById('participantCount');
         const liveParticipantCountElement = document.getElementById('liveParticipantCount');
+        const qrcodeImgElement = document.getElementById('qrcode-img');
 
         // 初始化页面
         function initPage() {
@@ -700,25 +737,61 @@
             
             // 每3秒检查新用户
             setInterval(checkForNewUsers, 3000);
+            
+            console.log("UFI答题系统初始化完成！");
         }
 
-        // 生成正确的二维码
+        // 生成二维码（使用Google Chart API）
         function generateQRCode() {
-            QRCode.toCanvas(document.getElementById('qrcode'), joinPageUrl, {
-                width: 250,
-                height: 250,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            }, function(error) {
-                if (error) console.error('二维码生成错误:', error);
-            });
+            try {
+                // 获取当前页面URL
+                const currentUrl = window.location.href;
+                const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+                const joinPageUrl = baseUrl + 'join.html';
+                
+                console.log("当前页面URL:", currentUrl);
+                console.log("基础URL:", baseUrl);
+                console.log("加入页面URL:", joinPageUrl);
+                
+                // 使用Google Chart API生成二维码
+                const qrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=${encodeURIComponent(joinPageUrl)}&choe=UTF-8&chld=H|0`;
+                
+                // 设置图片src
+                qrcodeImgElement.src = qrCodeUrl;
+                qrcodeImgElement.alt = "扫描加入UFI答题挑战 - " + joinPageUrl;
+                
+                console.log("二维码生成成功，URL:", qrCodeUrl);
+                
+                // 备用：如果Google API不可用，显示链接
+                qrcodeImgElement.onerror = function() {
+                    console.log("Google二维码API不可用，使用备用方案");
+                    qrcodeImgElement.alt = "请手动访问: " + joinPageUrl;
+                    qrcodeImgElement.style.display = 'none';
+                    
+                    // 显示链接
+                    const container = document.querySelector('.qr-code-container');
+                    container.innerHTML = `
+                        <div style="padding: 20px; text-align: center;">
+                            <div style="color: red; margin-bottom: 10px;">二维码生成失败</div>
+                            <div style="color: black; margin-bottom: 15px;">请手动访问：</div>
+                            <div style="color: blue; word-break: break-all; font-size: 14px;">${joinPageUrl}</div>
+                            <div style="color: black; margin-top: 15px;">或联系工作人员获取链接</div>
+                        </div>
+                    `;
+                };
+                
+            } catch (error) {
+                console.error("生成二维码时出错:", error);
+            }
         }
 
         // 显示二维码界面
         function showQrCode() {
             qrOverlayElement.style.display = 'flex';
             updateParticipantCount();
+            
+            // 重新生成二维码（确保URL是最新的）
+            generateQRCode();
         }
 
         // 隐藏二维码界面
@@ -728,15 +801,25 @@
 
         // 从本地存储加载用户
         function loadUsersFromStorage() {
-            const storedUsers = localStorage.getItem('ufiQuizUsers');
-            if (storedUsers) {
-                users = JSON.parse(storedUsers);
+            try {
+                const storedUsers = localStorage.getItem('ufiQuizUsers');
+                if (storedUsers) {
+                    users = JSON.parse(storedUsers);
+                    console.log("从本地存储加载用户:", users.length, "个");
+                }
+            } catch (error) {
+                console.error("加载用户数据时出错:", error);
+                users = [];
             }
         }
 
         // 保存用户到本地存储
         function saveUsersToStorage() {
-            localStorage.setItem('ufiQuizUsers', JSON.stringify(users));
+            try {
+                localStorage.setItem('ufiQuizUsers', JSON.stringify(users));
+            } catch (error) {
+                console.error("保存用户数据时出错:", error);
+            }
         }
 
         // 检查新用户加入
@@ -1139,6 +1222,21 @@
 
         // 更新排名（考虑分数和时间）
         function updateRanking() {
+            // 如果没有用户，显示提示
+            if (users.length === 0) {
+                rankingListElement.innerHTML = `
+                    <div class="ranking-item">
+                        <div class="rank rank-1">1</div>
+                        <div class="user-info">
+                            <div class="user-name">等待选手加入...</div>
+                            <div class="user-time">扫描二维码参与答题</div>
+                        </div>
+                        <div class="score">0</div>
+                    </div>
+                `;
+                return;
+            }
+            
             // 计算每个用户的综合排名分数
             users.forEach(user => {
                 user.rankingScore = calculateRankingScore(user);
@@ -1252,7 +1350,7 @@
                 color: #ffdd00;
             `;
             
-            let winnerText = "<div style='margin-bottom:30px;'><i class='fas fa-trophy' style='color:gold;'></i> 冠军: " + topThree[0].name + " (" + topThree[0].score + "分)</div>";
+            let winnerText = "<div style='margin-bottom:30px;'><i class='fas fa-trophy' style='color:gold;'></i> 冠军: " + (topThree[0] ? topThree[0].name : '--') + " (" + (topThree[0] ? topThree[0].score : 0) + "分)</div>";
             if (topThree[1]) {
                 winnerText += "<div style='margin-bottom:30px;'><i class='fas fa-medal' style='color:silver;'></i> 亚军: " + topThree[1].name + " (" + topThree[1].score + "分)</div>";
             }
@@ -1264,34 +1362,36 @@
             answersSectionElement.appendChild(winnerAnnouncement);
             
             // 显示所有参赛者成绩
-            const allResults = document.createElement('div');
-            allResults.style.cssText = `
-                margin-top: 40px;
-                padding: 20px;
-                background: rgba(255,255,255,0.1);
-                border-radius: 15px;
-                max-height: 300px;
-                overflow-y: auto;
-            `;
-            
-            sortedUsers.forEach((user, index) => {
-                const resultItem = document.createElement('div');
-                resultItem.style.cssText = `
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 10px 0;
-                    border-bottom: 1px solid rgba(255,255,255,0.1);
+            if (sortedUsers.length > 0) {
+                const allResults = document.createElement('div');
+                allResults.style.cssText = `
+                    margin-top: 40px;
+                    padding: 20px;
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 15px;
+                    max-height: 300px;
+                    overflow-y: auto;
                 `;
                 
-                resultItem.innerHTML = `
-                    <span>${index + 1}. ${user.name}</span>
-                    <span>${user.score}分 (平均用时: ${user.avgTime ? user.avgTime.toFixed(1) : '--'}秒)</span>
-                `;
+                sortedUsers.forEach((user, index) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.style.cssText = `
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 10px 0;
+                        border-bottom: 1px solid rgba(255,255,255,0.1);
+                    `;
+                    
+                    resultItem.innerHTML = `
+                        <span>${index + 1}. ${user.name}</span>
+                        <span>${user.score}分 (平均用时: ${user.avgTime ? user.avgTime.toFixed(1) : '--'}秒)</span>
+                    `;
+                    
+                    allResults.appendChild(resultItem);
+                });
                 
-                allResults.appendChild(resultItem);
-            });
-            
-            answersSectionElement.appendChild(allResults);
+                answersSectionElement.appendChild(allResults);
+            }
             
             clearInterval(timerInterval);
             timerElement.textContent = "完成";
