@@ -535,7 +535,8 @@
     <div class="container">
         <div class="header">
             <div class="logo">UFI集团</div>
-            <div class="event-title">2024年度UFI集团知识挑战赛</div>
+            <!-- 修改为2026年 -->
+            <div class="event-title">2026年度UFI集团知识挑战赛</div>
             <div class="timer-section">
                 <div class="timer" id="timer">30</div>
             </div>
@@ -739,6 +740,11 @@
             setInterval(checkForNewUsers, 3000);
             
             console.log("UFI答题系统初始化完成！");
+            
+            // 页面加载3秒后自动显示二维码界面
+            setTimeout(() => {
+                showQrCode();
+            }, 3000);
         }
 
         // 生成二维码（使用Google Chart API）
