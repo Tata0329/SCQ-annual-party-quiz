@@ -1,17 +1,3 @@
-# 年会大屏答题互动系统
-
-我将设计一个适用于年会大屏的答题互动网页，包含倒计时、实时排名、题目展示和互动效果。
-
-## 设计思路
-1. 创建全屏显示布局，适合大屏投影
-2. 实现答题倒计时和实时排名功能
-3. 添加题目展示和答案选项
-4. 设计互动效果和动画
-5. 添加后台控制功能
-
-下面是完整的实现代码：
-
-```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -19,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>年会大屏答题互动系统</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -322,6 +309,131 @@
             border-radius: 10px;
         }
         
+        /* 二维码加入区域样式 */
+        .qr-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .qr-container {
+            background: linear-gradient(135deg, #1e3799 0%, #0c2461 100%);
+            border-radius: 25px;
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(255, 221, 0, 0.5);
+        }
+        
+        .qr-title {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ffdd00;
+            text-shadow: 0 0 15px rgba(255, 221, 0, 0.5);
+        }
+        
+        .qr-subtitle {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            color: #fff;
+            opacity: 0.9;
+        }
+        
+        .qr-code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+        
+        #qrcode {
+            width: 250px;
+            height: 250px;
+        }
+        
+        .qr-instructions {
+            font-size: 1.6rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            color: #ffdd00;
+        }
+        
+        .qr-stats {
+            font-size: 1.8rem;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        
+        .close-qr-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            font-size: 2.5rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-qr-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+        
+        .qr-show-btn {
+            background: linear-gradient(90deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.4rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+        }
+        
+        .qr-show-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.4);
+        }
+        
+        .admin-panel {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .participant-count {
+            font-size: 1.6rem;
+            color: #ffdd00;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 50px;
+        }
+        
         /* 动画效果 */
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -371,10 +483,38 @@
     </style>
 </head>
 <body>
+    <!-- 二维码加入覆盖层 -->
+    <div class="qr-overlay" id="qrOverlay">
+        <div class="qr-container">
+            <button class="close-qr-btn" id="closeQrBtn">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="qr-title">扫码加入答题</div>
+            <div class="qr-subtitle">使用手机微信扫描下方二维码参与年会答题</div>
+            
+            <div class="qr-code-container">
+                <div id="qrcode"></div>
+            </div>
+            
+            <div class="qr-instructions">
+                <p><i class="fas fa-mobile-alt"></i> 打开手机微信/浏览器</p>
+                <p><i class="fas fa-camera"></i> 扫描上方二维码</p>
+                <p><i class="fas fa-edit"></i> 输入姓名加入比赛</p>
+                <p><i class="fas fa-gamepad"></i> 开始答题赢取大奖</p>
+            </div>
+            
+            <div class="qr-stats">
+                已加入人数: <span id="participantCount">0</span> 人
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主界面 -->
     <div class="container">
         <div class="header">
             <div class="logo">智慧问答</div>
-            <div class="event-title">2024年度公司盛典 - 知识挑战赛</div>
+            <div class="event-title">2026 UFI猜猜猜 - 知识挑战赛</div>
             <div class="timer-section">
                 <div class="timer" id="timer">30</div>
             </div>
@@ -388,14 +528,14 @@
                 </div>
                 
                 <div class="question-text" id="question-text">
-                    公司成立于哪一年？
+                    UFI集团成立于哪一年？
                 </div>
                 
                 <div class="answers-section" id="answers-section">
-                    <div class="answer" data-index="0">A. 2010年</div>
-                    <div class="answer" data-index="1">B. 2012年</div>
-                    <div class="answer" data-index="2">C. 2015年</div>
-                    <div class="answer" data-index="3">D. 2018年</div>
+                    <div class="answer" data-index="0">A. 1970年</div>
+                    <div class="answer" data-index="1">B. 1971年</div>
+                    <div class="answer" data-index="2">C. 1972年</div>
+                    <div class="answer" data-index="3">D. 1973年</div>
                 </div>
             </div>
             
@@ -418,6 +558,16 @@
             <button class="control-btn reset" id="reset-btn">
                 <i class="fas fa-redo"></i> 重置比赛
             </button>
+            
+            <div class="admin-panel">
+                <div class="participant-count">
+                    <i class="fas fa-users"></i> 参与: <span id="liveParticipantCount">0</span>
+                </div>
+                
+                <button class="qr-show-btn" id="showQrBtn">
+                    <i class="fas fa-qrcode"></i> 显示二维码
+                </button>
+            </div>
             
             <div class="question-stats">
                 <span id="stats-text">已答: 0/10 | 正确率: 0%</span>
@@ -504,19 +654,9 @@
             }
         ];
 
-        // 模拟用户数据
-        const users = [
-            { id: 1, name: "张三", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 2, name: "李四", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 3, name: "王五", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 4, name: "赵六", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 5, name: "孙七", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 6, name: "周八", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 7, name: "吴九", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 8, name: "郑十", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 9, name: "钱十一", score: 0, correct: 0, answered: 0, currentAnswer: null },
-            { id: 10, name: "刘十二", score: 0, correct: 0, answered: 0, currentAnswer: null }
-        ];
+        // 用户数据 - 初始为空的，通过扫码加入
+        let users = [];
+        let userCounter = 1; // 用户ID计数器
 
         // 全局变量
         let currentQuestion = 0;
@@ -524,6 +664,13 @@
         let timerInterval;
         let isAnswered = false;
         let isMultiChoice = false;
+        let gameStarted = false;
+
+        // 获取当前页面的URL（用于生成二维码）
+        const currentUrl = window.location.href;
+        const joinUrl = currentUrl.includes('?') ? 
+            currentUrl.split('?')[0] + '?join=true' : 
+            currentUrl + '?join=true';
 
         // DOM元素
         const timerElement = document.getElementById('timer');
@@ -536,23 +683,299 @@
         const statsTextElement = document.getElementById('stats-text');
         const resetBtnElement = document.getElementById('reset-btn');
         const nextBtnElement = document.getElementById('next-btn');
+        const qrOverlayElement = document.getElementById('qrOverlay');
+        const closeQrBtnElement = document.getElementById('closeQrBtn');
+        const showQrBtnElement = document.getElementById('showQrBtn');
+        const participantCountElement = document.getElementById('participantCount');
+        const liveParticipantCountElement = document.getElementById('liveParticipantCount');
+        const qrcodeElement = document.getElementById('qrcode');
 
         // 初始化页面
         function initPage() {
-            loadQuestion(currentQuestion);
-            startTimer();
-            updateRanking();
-            updateStats();
+            // 检查URL参数，判断是否为加入页面
+            const urlParams = new URLSearchParams(window.location.search);
+            const isJoinPage = urlParams.get('join');
             
-            // 添加答题事件监听
-            const answerElements = document.querySelectorAll('.answer');
-            answerElements.forEach(answer => {
-                answer.addEventListener('click', () => selectAnswer(answer));
+            if (isJoinPage) {
+                showJoinPage();
+            } else {
+                loadQuestion(currentQuestion);
+                startTimer();
+                updateRanking();
+                updateStats();
+                
+                // 添加答题事件监听
+                const answerElements = document.querySelectorAll('.answer');
+                answerElements.forEach(answer => {
+                    answer.addEventListener('click', () => selectAnswer(answer));
+                });
+                
+                // 添加按钮事件监听
+                resetBtnElement.addEventListener('click', resetGame);
+                nextBtnElement.addEventListener('click', nextQuestion);
+                closeQrBtnElement.addEventListener('click', hideQrCode);
+                showQrBtnElement.addEventListener('click', showQrCode);
+                
+                // 生成二维码
+                generateQRCode();
+                
+                // 隐藏二维码界面（默认不显示）
+                hideQrCode();
+                
+                // 从本地存储加载已有用户
+                loadUsersFromStorage();
+                
+                // 模拟一些初始用户（演示用）
+                if (users.length === 0) {
+                    addDemoUsers();
+                }
+                
+                // 更新参与者计数
+                updateParticipantCount();
+                
+                // 监听来自加入页面的消息（实际应用中需要通过服务器）
+                listenForNewUsers();
+            }
+        }
+
+        // 显示加入页面（手机端）
+        function showJoinPage() {
+            document.body.innerHTML = `
+                <div class="join-container" style="
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%);
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                ">
+                    <h1 style="font-size: 3rem; margin-bottom: 20px; color: #ffdd00;">年会答题挑战赛</h1>
+                    <p style="font-size: 1.8rem; margin-bottom: 40px;">请输入您的姓名加入比赛</p>
+                    
+                    <div style="width: 100%; max-width: 500px; margin-bottom: 30px;">
+                        <input type="text" id="userName" placeholder="请输入您的姓名" style="
+                            width: 100%;
+                            padding: 20px;
+                            font-size: 1.8rem;
+                            border-radius: 15px;
+                            border: 3px solid #ffdd00;
+                            background: rgba(255,255,255,0.9);
+                            text-align: center;
+                        ">
+                    </div>
+                    
+                    <button id="joinBtn" style="
+                        background: linear-gradient(90deg, #2ecc71, #27ae60);
+                        color: white;
+                        border: none;
+                        padding: 20px 50px;
+                        font-size: 2rem;
+                        border-radius: 15px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(46, 204, 113, 0.4)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        <i class="fas fa-sign-in-alt"></i> 加入比赛
+                    </button>
+                    
+                    <div id="joinStatus" style="margin-top: 30px; font-size: 1.6rem;"></div>
+                    
+                    <div style="margin-top: 50px; font-size: 1.4rem; color: rgba(255,255,255,0.7);">
+                        <p>比赛规则：</p>
+                        <p>1. 每道题有30秒答题时间</p>
+                        <p>2. 答对得分，答错不扣分</p>
+                        <p>3. 答题越快，得分越高</p>
+                        <p>4. 最终排名前三位有奖品</p>
+                    </div>
+                </div>
+            `;
+            
+            // 添加加入功能
+            document.getElementById('joinBtn').addEventListener('click', joinGame);
+            
+            // 回车键也可以加入
+            document.getElementById('userName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    joinGame();
+                }
             });
+        }
+
+        // 加入游戏（手机端）
+        function joinGame() {
+            const userNameInput = document.getElementById('userName');
+            const userName = userNameInput.value.trim();
+            const joinStatus = document.getElementById('joinStatus');
             
-            // 添加按钮事件监听
-            resetBtnElement.addEventListener('click', resetGame);
-            nextBtnElement.addEventListener('click', nextQuestion);
+            if (!userName) {
+                joinStatus.innerHTML = '<span style="color:#e74c3c;">请输入姓名</span>';
+                userNameInput.focus();
+                return;
+            }
+            
+            if (userName.length > 10) {
+                joinStatus.innerHTML = '<span style="color:#e74c3c;">姓名不能超过10个字符</span>';
+                return;
+            }
+            
+            // 生成用户ID（基于时间戳和随机数）
+            const userId = Date.now() + Math.floor(Math.random() * 1000);
+            
+            // 创建用户数据
+            const userData = {
+                id: userId,
+                name: userName,
+                score: 0,
+                correct: 0,
+                answered: 0,
+                currentAnswer: null,
+                joinedAt: new Date().toISOString()
+            };
+            
+            // 保存到本地存储（模拟发送到服务器）
+            saveUserToStorage(userData);
+            
+            // 显示成功消息
+            joinStatus.innerHTML = `<span style="color:#2ecc71;">欢迎 ${userName} 加入比赛！</span><br>
+                                   <p style="font-size:1.4rem; margin-top:10px;">请等待主持人开始比赛...</p>`;
+            
+            // 清空输入框
+            userNameInput.value = '';
+            
+            // 禁用按钮，避免重复加入
+            const joinBtn = document.getElementById('joinBtn');
+            joinBtn.disabled = true;
+            joinBtn.innerHTML = '<i class="fas fa-check"></i> 已成功加入';
+            joinBtn.style.background = 'linear-gradient(90deg, #95a5a6, #7f8c8d)';
+            
+            // 提示用户返回大屏
+            setTimeout(() => {
+                joinStatus.innerHTML += `<p style="font-size:1.4rem; margin-top:20px; color:#ffdd00;">
+                    <i class="fas fa-tv"></i> 请关注大屏幕上的题目和排名
+                </p>`;
+            }, 2000);
+        }
+
+        // 保存用户到本地存储（模拟服务器）
+        function saveUserToStorage(userData) {
+            // 获取现有用户
+            let storedUsers = localStorage.getItem('quizUsers');
+            let usersArray = storedUsers ? JSON.parse(storedUsers) : [];
+            
+            // 添加新用户
+            usersArray.push(userData);
+            
+            // 保存回本地存储
+            localStorage.setItem('quizUsers', JSON.stringify(usersArray));
+            
+            // 如果是大屏页面，需要更新用户列表
+            if (!window.location.search.includes('join')) {
+                loadUsersFromStorage();
+                updateParticipantCount();
+                updateRanking();
+            }
+        }
+
+        // 从本地存储加载用户
+        function loadUsersFromStorage() {
+            const storedUsers = localStorage.getItem('quizUsers');
+            if (storedUsers) {
+                users = JSON.parse(storedUsers);
+            }
+        }
+
+        // 更新参与者计数
+        function updateParticipantCount() {
+            const count = users.length;
+            participantCountElement.textContent = count;
+            liveParticipantCountElement.textContent = count;
+        }
+
+        // 模拟监听新用户加入（实际应用中需要WebSocket）
+        function listenForNewUsers() {
+            // 每3秒检查一次新用户
+            setInterval(() => {
+                const oldCount = users.length;
+                loadUsersFromStorage();
+                const newCount = users.length;
+                
+                if (newCount > oldCount) {
+                    updateParticipantCount();
+                    updateRanking();
+                    
+                    // 显示新用户加入提示
+                    showNewUserNotification(users[users.length - 1].name);
+                }
+            }, 3000);
+        }
+
+        // 显示新用户加入通知
+        function showNewUserNotification(userName) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                background: linear-gradient(90deg, #2ecc71, #27ae60);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                font-size: 1.6rem;
+                z-index: 1001;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                animation: slideIn 0.5s ease-out;
+            `;
+            
+            notification.innerHTML = `<i class="fas fa-user-plus"></i> ${userName} 加入了比赛`;
+            document.body.appendChild(notification);
+            
+            // 3秒后移除通知
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.5s ease-out';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // 添加演示用户（初始）
+        function addDemoUsers() {
+            const demoUsers = [
+                { id: 1001, name: "张三", score: 0, correct: 0, answered: 0, currentAnswer: null },
+                { id: 1002, name: "李四", score: 0, correct: 0, answered: 0, currentAnswer: null },
+                { id: 1003, name: "王五", score: 0, correct: 0, answered: 0, currentAnswer: null },
+                { id: 1004, name: "赵六", score: 0, correct: 0, answered: 0, currentAnswer: null },
+            ];
+            
+            demoUsers.forEach(user => {
+                users.push(user);
+                saveUserToStorage(user);
+            });
+        }
+
+        // 生成二维码
+        function generateQRCode() {
+            QRCode.toCanvas(document.getElementById('qrcode'), joinUrl, {
+                width: 250,
+                height: 250,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            }, function(error) {
+                if (error) console.error(error);
+            });
+        }
+
+        // 显示二维码界面
+        function showQrCode() {
+            qrOverlayElement.style.display = 'flex';
+            updateParticipantCount(); // 更新显示人数
+        }
+
+        // 隐藏二维码界面
+        function hideQrCode() {
+            qrOverlayElement.style.display = 'none';
         }
 
         // 加载题目
@@ -587,439 +1010,3 @@
             // 重置定时器
             timerValue = 30;
             timerElement.textContent = timerValue;
-            timerElement.classList.remove('pulse');
-            
-            // 启用下一题按钮
-            nextBtnElement.disabled = true;
-            nextBtnElement.style.opacity = '0.5';
-            nextBtnElement.style.cursor = 'not-allowed';
-            
-            // 如果是多选题，更新UI提示
-            if (isMultiChoice) {
-                const hint = document.createElement('div');
-                hint.style.textAlign = 'center';
-                hint.style.marginTop = '10px';
-                hint.style.color = '#ffdd00';
-                hint.style.fontSize = '1.5rem';
-                hint.textContent = '提示：多选题，可选择多个答案';
-                answersSectionElement.parentNode.insertBefore(hint, answersSectionElement.nextSibling);
-            }
-            
-            // 重置所有用户的当前答案
-            users.forEach(user => user.currentAnswer = null);
-        }
-
-        // 选择答案
-        function selectAnswer(answerElement) {
-            if (isAnswered) return;
-            
-            const selectedIndex = parseInt(answerElement.dataset.index);
-            
-            // 如果是单选题
-            if (!isMultiChoice) {
-                // 移除所有选项的选择状态
-                document.querySelectorAll('.answer').forEach(el => {
-                    el.classList.remove('selected');
-                });
-                
-                // 设置当前选择
-                answerElement.classList.add('selected');
-                
-                // 模拟用户答题
-                simulateUserAnswers(selectedIndex);
-                
-                // 显示正确答案
-                showCorrectAnswer();
-            } else {
-                // 多选题：切换选择状态
-                answerElement.classList.toggle('selected');
-                
-                // 获取所有已选择的选项
-                const selectedIndices = Array.from(document.querySelectorAll('.answer.selected'))
-                    .map(el => parseInt(el.dataset.index));
-                
-                // 如果至少选择了一个选项，模拟用户答题
-                if (selectedIndices.length > 0) {
-                    simulateUserAnswers(selectedIndices);
-                }
-            }
-        }
-
-        // 模拟用户答题
-        function simulateUserAnswers(selectedIndex) {
-            // 随机为每个用户分配答案
-            users.forEach(user => {
-                // 80%的用户会答题，20%可能不答
-                if (Math.random() < 0.8) {
-                    if (isMultiChoice) {
-                        // 多选题：随机选择部分选项
-                        const correctIndices = questions[currentQuestion].correct;
-                        const userAnswer = [];
-                        
-                        // 用户有一定概率答对
-                        const isCorrect = Math.random() < 0.6;
-                        
-                        if (isCorrect) {
-                            // 答对的情况
-                            userAnswer.push(...correctIndices);
-                            // 可能额外选择一些错误选项
-                            if (Math.random() < 0.3) {
-                                const allIndices = Array.from({length: questions[currentQuestion].answers.length}, (_, i) => i);
-                                const wrongIndices = allIndices.filter(i => !correctIndices.includes(i));
-                                if (wrongIndices.length > 0) {
-                                    userAnswer.push(wrongIndices[Math.floor(Math.random() * wrongIndices.length)]);
-                                }
-                            }
-                        } else {
-                            // 答错的情况
-                            const allIndices = Array.from({length: questions[currentQuestion].answers.length}, (_, i) => i);
-                            const randomCount = Math.min(1 + Math.floor(Math.random() * 3), allIndices.length);
-                            
-                            // 随机选择选项
-                            for (let i = 0; i < randomCount; i++) {
-                                const randomIndex = Math.floor(Math.random() * allIndices.length);
-                                userAnswer.push(allIndices[randomIndex]);
-                                allIndices.splice(randomIndex, 1);
-                            }
-                        }
-                        
-                        user.currentAnswer = [...new Set(userAnswer)]; // 去重
-                    } else {
-                        // 单选题
-                        const correctIndex = questions[currentQuestion].correct;
-                        // 用户有一定概率答对
-                        const isCorrect = Math.random() < 0.7;
-                        user.currentAnswer = isCorrect ? correctIndex : 
-                            (selectedIndex + 1) % questions[currentQuestion].answers.length;
-                    }
-                    
-                    user.answered++;
-                    
-                    // 检查答案是否正确
-                    const isCorrect = checkAnswer(user.currentAnswer);
-                    if (isCorrect) {
-                        user.correct++;
-                        user.score += 100;
-                        // 额外奖励：答题速度快
-                        if (timerValue > 20) user.score += 50;
-                        else if (timerValue > 10) user.score += 30;
-                    }
-                } else {
-                    // 用户未答题
-                    user.currentAnswer = null;
-                }
-            });
-            
-            // 更新排名和统计
-            updateRanking();
-            updateStats();
-            
-            // 如果不是多选题，自动显示答案
-            if (!isMultiChoice) {
-                isAnswered = true;
-                nextBtnElement.disabled = false;
-                nextBtnElement.style.opacity = '1';
-                nextBtnElement.style.cursor = 'pointer';
-                clearInterval(timerInterval);
-                timerElement.classList.add('pulse');
-            }
-        }
-
-        // 检查答案是否正确
-        function checkAnswer(userAnswer) {
-            const correctAnswer = questions[currentQuestion].correct;
-            
-            if (isMultiChoice) {
-                // 多选题：检查数组是否相等
-                if (!Array.isArray(userAnswer) || userAnswer.length !== correctAnswer.length) {
-                    return false;
-                }
-                
-                const sortedUserAnswer = [...userAnswer].sort((a, b) => a - b);
-                const sortedCorrectAnswer = [...correctAnswer].sort((a, b) => a - b);
-                
-                return JSON.stringify(sortedUserAnswer) === JSON.stringify(sortedCorrectAnswer);
-            } else {
-                // 单选题
-                return userAnswer === correctAnswer;
-            }
-        }
-
-        // 显示正确答案
-        function showCorrectAnswer() {
-            const correctAnswer = questions[currentQuestion].correct;
-            const answerElements = document.querySelectorAll('.answer');
-            
-            if (isMultiChoice) {
-                // 多选题：标记所有正确选项
-                correctAnswer.forEach(index => {
-                    answerElements[index].classList.add('correct');
-                });
-                
-                // 标记用户选择的错误选项
-                answerElements.forEach((el, index) => {
-                    if (el.classList.contains('selected') && !correctAnswer.includes(index)) {
-                        el.classList.add('wrong');
-                    }
-                });
-            } else {
-                // 单选题：标记正确答案
-                answerElements[correctAnswer].classList.add('correct');
-                
-                // 标记错误答案（如果用户选错了）
-                answerElements.forEach((el, index) => {
-                    if (el.classList.contains('selected') && index !== correctAnswer) {
-                        el.classList.add('wrong');
-                    }
-                });
-            }
-            
-            // 显示解释（在真实场景中，这里可以显示题目解释）
-            const explanation = document.createElement('div');
-            explanation.style.marginTop = '30px';
-            explanation.style.padding = '20px';
-            explanation.style.backgroundColor = 'rgba(0,0,0,0.3)';
-            explanation.style.borderRadius = '15px';
-            explanation.style.fontSize = '1.8rem';
-            explanation.style.color = '#ffdd00';
-            explanation.textContent = `正确答案解释: ${questions[currentQuestion].explanation}`;
-            
-            // 插入解释
-            const parent = answersSectionElement.parentNode;
-            parent.insertBefore(explanation, answersSectionElement.nextSibling);
-        }
-
-        // 开始倒计时
-        function startTimer() {
-            clearInterval(timerInterval);
-            timerValue = 30;
-            timerElement.textContent = timerValue;
-            
-            timerInterval = setInterval(() => {
-                timerValue--;
-                timerElement.textContent = timerValue;
-                
-                // 最后10秒闪烁效果
-                if (timerValue <= 10) {
-                    timerElement.classList.add('pulse');
-                }
-                
-                // 时间到
-                if (timerValue <= 0) {
-                    clearInterval(timerInterval);
-                    timeUp();
-                }
-            }, 1000);
-        }
-
-        // 时间到
-        function timeUp() {
-            if (isAnswered) return;
-            
-            isAnswered = true;
-            
-            // 为未答题的用户记录
-            users.forEach(user => {
-                if (user.currentAnswer === null) {
-                    user.answered++;
-                }
-            });
-            
-            // 显示正确答案
-            showCorrectAnswer();
-            
-            // 启用下一题按钮
-            nextBtnElement.disabled = false;
-            nextBtnElement.style.opacity = '1';
-            nextBtnElement.style.cursor = 'pointer';
-            
-            // 更新排名和统计
-            updateRanking();
-            updateStats();
-        }
-
-        // 更新排名
-        function updateRanking() {
-            // 按分数排序
-            const sortedUsers = [...users].sort((a, b) => b.score - a.score);
-            
-            // 清空排名列表
-            rankingListElement.innerHTML = '';
-            
-            // 添加排名项
-            sortedUsers.forEach((user, index) => {
-                const rankingItem = document.createElement('div');
-                rankingItem.className = 'ranking-item';
-                
-                // 当前用户高亮显示（模拟当前活跃用户）
-                if (user.id === 1) {
-                    rankingItem.classList.add('current-user');
-                }
-                
-                // 排名
-                const rankElement = document.createElement('div');
-                rankElement.className = `rank rank-${index + 1}`;
-                rankElement.textContent = index + 1;
-                
-                // 用户信息
-                const userInfoElement = document.createElement('div');
-                userInfoElement.className = 'user-info';
-                userInfoElement.textContent = user.name;
-                
-                // 分数
-                const scoreElement = document.createElement('div');
-                scoreElement.className = 'score';
-                scoreElement.textContent = user.score;
-                
-                // 组装
-                rankingItem.appendChild(rankElement);
-                rankingItem.appendChild(userInfoElement);
-                rankingItem.appendChild(scoreElement);
-                
-                rankingListElement.appendChild(rankingItem);
-            });
-        }
-
-        // 更新统计信息
-        function updateStats() {
-            const totalQuestions = questions.length;
-            const answeredQuestions = currentQuestion + 1;
-            
-            // 计算平均正确率
-            const totalCorrect = users.reduce((sum, user) => sum + user.correct, 0);
-            const totalAnswered = users.reduce((sum, user) => sum + user.answered, 0);
-            const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
-            
-            statsTextElement.textContent = `已答: ${answeredQuestions}/${totalQuestions} | 平均正确率: ${accuracy}%`;
-        }
-
-        // 下一题
-        function nextQuestion() {
-            // 创建彩色纸屑效果
-            createConfetti();
-            
-            // 切换到下一题
-            currentQuestion++;
-            
-            if (currentQuestion >= questions.length) {
-                // 所有题目已回答完毕
-                endGame();
-                return;
-            }
-            
-            // 加载下一题
-            loadQuestion(currentQuestion);
-            
-            // 重启定时器
-            startTimer();
-            
-            // 禁用下一题按钮
-            nextBtnElement.disabled = true;
-            nextBtnElement.style.opacity = '0.5';
-            nextBtnElement.style.cursor = 'not-allowed';
-        }
-
-        // 结束游戏
-        function endGame() {
-            // 显示最终结果
-            questionNumberElement.textContent = "答题结束";
-            questionTypeElement.textContent = "最终结果";
-            questionTextElement.textContent = "恭喜所有参赛者完成挑战！";
-            
-            // 清空答案区域
-            answersSectionElement.innerHTML = '';
-            
-            // 显示最终排名前三
-            const sortedUsers = [...users].sort((a, b) => b.score - a.score);
-            const topThree = sortedUsers.slice(0, 3);
-            
-            const winnerAnnouncement = document.createElement('div');
-            winnerAnnouncement.style.textAlign = 'center';
-            winnerAnnouncement.style.fontSize = '2.5rem';
-            winnerAnnouncement.style.marginTop = '50px';
-            winnerAnnouncement.style.color = '#ffdd00';
-            
-            let winnerText = "<div style='margin-bottom:30px;'>🏆 冠军: " + topThree[0].name + " (" + topThree[0].score + "分)</div>";
-            winnerText += "<div style='margin-bottom:30px;'>🥈 亚军: " + topThree[1].name + " (" + topThree[1].score + "分)</div>";
-            winnerText += "<div>🥉 季军: " + topThree[2].name + " (" + topThree[2].score + "分)</div>";
-            
-            winnerAnnouncement.innerHTML = winnerText;
-            
-            answersSectionElement.appendChild(winnerAnnouncement);
-            
-            // 停止计时器
-            clearInterval(timerInterval);
-            timerElement.textContent = "完成";
-            
-            // 禁用下一题按钮
-            nextBtnElement.disabled = true;
-            nextBtnElement.style.opacity = '0.5';
-            nextBtnElement.style.cursor = 'not-allowed';
-            
-            // 创建大量彩色纸屑
-            for (let i = 0; i < 100; i++) {
-                setTimeout(() => createConfetti(), i * 50);
-            }
-        }
-
-        // 重置游戏
-        function resetGame() {
-            if (confirm("确定要重置比赛吗？所有数据将被清空。")) {
-                // 重置变量
-                currentQuestion = 0;
-                timerValue = 30;
-                isAnswered = false;
-                
-                // 重置用户数据
-                users.forEach(user => {
-                    user.score = 0;
-                    user.correct = 0;
-                    user.answered = 0;
-                    user.currentAnswer = null;
-                });
-                
-                // 重新加载第一题
-                loadQuestion(0);
-                
-                // 重启定时器
-                startTimer();
-                
-                // 更新排名和统计
-                updateRanking();
-                updateStats();
-            }
-        }
-
-        // 创建彩色纸屑效果
-        function createConfetti() {
-            const colors = ['#ffdd00', '#ff5e00', '#3498db', '#2ecc71', '#9b59b6', '#e74c3c'];
-            
-            for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.width = Math.random() * 10 + 5 + 'px';
-                confetti.style.height = Math.random() * 10 + 5 + 'px';
-                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
-                
-                document.body.appendChild(confetti);
-                
-                // 动画
-                const animation = confetti.animate([
-                    { transform: `translateY(-100px) rotate(0deg)`, opacity: 1 },
-                    { transform: `translateY(${window.innerHeight + 100}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
-                ], {
-                    duration: 1000 + Math.random() * 2000,
-                    easing: 'cubic-bezier(0.215, 0.61, 0.355, 1)'
-                });
-                
-                // 动画结束后移除元素
-                animation.onfinish = () => confetti.remove();
-            }
-        }
-
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', initPage);
-    </script>
-</body
