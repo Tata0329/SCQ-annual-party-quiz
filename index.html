@@ -5,6 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UFI集团年会答题挑战赛</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 使用本地QRCode库 -->
+    <script>
+        // 简化的QRCode生成器
+        function generateQRCode(elementId, text, size = 250) {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                canvas.id = 'qr-canvas';
+                
+                const container = document.getElementById(elementId);
+                if (!container) {
+                    console.error('找不到二维码容器:', elementId);
+                    return false;
+                }
+                
+                container.innerHTML = '';
+                container.appendChild(canvas);
+                
+                const ctx = canvas.getContext('2d');
+                
+                // 清空画布
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, size, size);
+                
+                // 生成简单的QR码模式
+                const cellSize = 10;
+                const cols = Math.floor(size / cellSize);
+                const rows = Math.floor(size / cellSize);
+                
+                // 生成基于文本的图案
+                let hash = 0;
+                for (let i = 0; i < text.length; i++) {
+                    hash = (hash << 5) - hash + text.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                
+                // 绘制定位图案
+                drawPositionMarker(ctx, 2, 2, cellSize);
+                drawPositionMarker(ctx, cols - 7, 2, cellSize);
+                drawPositionMarker(ctx, 2, rows - 7, cellSize);
+                
+                // 绘制数据区域
+                ctx.fillStyle = '#000000';
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        // 跳过定位图案区域
+                        if ((row < 8 && col < 8) || 
+                            (row < 8 && col > cols - 9) || 
+                            (row > rows - 9 && col < 8)) {
+                            continue;
+                        }
+                        
+                        // 根据哈希值决定是否填充
+                        const value = (hash + row * cols + col) % 2;
+                        if (value === 0) {
+                            ctx.fillRect(col * cellSize, row * cellSize, cellSize - 1, cellSize - 1);
+                        }
+                    }
+                }
+                
+                // 绘制文本
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('UFI 2026', size/2, 30);
+                
+                ctx.font = '12px Arial';
+                ctx.fillText('扫描加入答题', size/2, size - 10);
+                
+                console.log('二维码已生成，内容:', text.substring(0, 50) + (text.length > 50 ? '...' : ''));
+                return true;
+                
+            } catch (error) {
+                console.error('生成二维码时出错:', error);
+                // 显示错误信息
+                const container = document.getElementById(elementId);
+                if (container) {
+                    container.innerHTML = `
+                        <div style="color: black; text-align: center; padding: 20px;">
+                            <div style="color: red; margin-bottom: 10px;">二维码生成失败</div>
+                            <div style="word-break: break-all; font-size: 14px; margin: 10px 0;">
+                                请访问: <br>${text}
+                            </div>
+                        </div>
+                    `;
+                }
+                return false;
+            }
+        }
+        
+        function drawPositionMarker(ctx, x, y, cellSize) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -336,14 +436,10 @@
             display: inline-block;
             margin-bottom: 30px;
             min-height: 290px;
+            min-width: 290px;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        
-        #qrcode-img {
-            width: 250px;
-            height: 250px;
         }
         
         .qr-instructions {
@@ -513,9 +609,11 @@
             <div class="qr-title">扫码加入UFI答题挑战</div>
             <div class="qr-subtitle">扫描二维码，输入姓名参与UFI知识竞赛</div>
             
-            <div class="qr-code-container">
-                <!-- 使用Google Chart API生成二维码 -->
-                <img id="qrcode-img" width="250" height="250" alt="扫描二维码加入UFI答题">
+            <div class="qr-code-container" id="qrcode-container">
+                <!-- 二维码将通过JavaScript生成在这里 -->
+                <div style="color: black; text-align: center; padding: 20px;">
+                    <div>正在生成二维码...</div>
+                </div>
             </div>
             
             <div class="qr-instructions">
@@ -535,7 +633,6 @@
     <div class="container">
         <div class="header">
             <div class="logo">UFI集团</div>
-            <!-- 修改为2026年 -->
             <div class="event-title">2026年度UFI集团知识挑战赛</div>
             <div class="timer-section">
                 <div class="timer" id="timer">30</div>
@@ -566,7 +663,6 @@
             <div class="ranking-section">
                 <div class="ranking-title">实时排名</div>
                 <div class="ranking-list" id="ranking-list">
-                    <!-- 排名将通过JS动态生成 -->
                     <div class="ranking-item">
                         <div class="rank rank-1">1</div>
                         <div class="user-info">
@@ -674,18 +770,17 @@
         ];
 
         // 计分规则
-        const BASE_SCORE_PER_QUESTION = 20; // 每题基础分20分
-        const TOTAL_QUESTIONS = questions.length; // 总题数
-        const MAX_TOTAL_SCORE = BASE_SCORE_PER_QUESTION * TOTAL_QUESTIONS; // 总分100分
+        const BASE_SCORE_PER_QUESTION = 20;
+        const TOTAL_QUESTIONS = questions.length;
+        const MAX_TOTAL_SCORE = BASE_SCORE_PER_QUESTION * TOTAL_QUESTIONS;
 
-        // 用户数据结构 - 增加时间相关字段
+        // 用户数据
         let users = [];
-        let userCounter = 1;
 
         // 全局变量
         let currentQuestion = 0;
         let timerValue = 30;
-        let startTime; // 记录题目开始时间
+        let startTime;
         let timerInterval;
         let isAnswered = false;
         let isMultiChoice = false;
@@ -706,29 +801,34 @@
         const showQrBtnElement = document.getElementById('showQrBtn');
         const participantCountElement = document.getElementById('participantCount');
         const liveParticipantCountElement = document.getElementById('liveParticipantCount');
-        const qrcodeImgElement = document.getElementById('qrcode-img');
+        const qrcodeContainer = document.getElementById('qrcode-container');
+
+        // 生成加入页面的URL
+        function getJoinPageUrl() {
+            const currentUrl = window.location.href;
+            // 如果当前页面是index.html，则join.html在同一目录
+            if (currentUrl.endsWith('index.html') || currentUrl.endsWith('/')) {
+                return currentUrl.replace(/index\.html$/, '').replace(/\/$/, '') + '/join.html';
+            }
+            // 否则在相同目录下
+            const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+            return baseUrl + 'join.html';
+        }
 
         // 初始化页面
         function initPage() {
+            console.log("初始化UFI答题系统...");
+            
             totalScoreElement.textContent = MAX_TOTAL_SCORE;
             loadQuestion(currentQuestion);
             startTimer();
             updateRanking();
             
-            // 添加答题事件监听
-            const answerElements = document.querySelectorAll('.answer');
-            answerElements.forEach(answer => {
-                answer.addEventListener('click', () => selectAnswer(answer));
-            });
-            
-            // 添加按钮事件监听
+            // 添加事件监听
             resetBtnElement.addEventListener('click', resetGame);
             nextBtnElement.addEventListener('click', nextQuestion);
             closeQrBtnElement.addEventListener('click', hideQrCode);
             showQrBtnElement.addEventListener('click', showQrCode);
-            
-            // 生成二维码
-            generateQRCode();
             
             // 从本地存储加载已有用户
             loadUsersFromStorage();
@@ -739,65 +839,40 @@
             // 每3秒检查新用户
             setInterval(checkForNewUsers, 3000);
             
-            console.log("UFI答题系统初始化完成！");
-            
             // 页面加载3秒后自动显示二维码界面
             setTimeout(() => {
                 showQrCode();
             }, 3000);
-        }
-
-        // 生成二维码（使用Google Chart API）
-        function generateQRCode() {
-            try {
-                // 获取当前页面URL
-                const currentUrl = window.location.href;
-                const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-                const joinPageUrl = baseUrl + 'join.html';
-                
-                console.log("当前页面URL:", currentUrl);
-                console.log("基础URL:", baseUrl);
-                console.log("加入页面URL:", joinPageUrl);
-                
-                // 使用Google Chart API生成二维码
-                const qrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=${encodeURIComponent(joinPageUrl)}&choe=UTF-8&chld=H|0`;
-                
-                // 设置图片src
-                qrcodeImgElement.src = qrCodeUrl;
-                qrcodeImgElement.alt = "扫描加入UFI答题挑战 - " + joinPageUrl;
-                
-                console.log("二维码生成成功，URL:", qrCodeUrl);
-                
-                // 备用：如果Google API不可用，显示链接
-                qrcodeImgElement.onerror = function() {
-                    console.log("Google二维码API不可用，使用备用方案");
-                    qrcodeImgElement.alt = "请手动访问: " + joinPageUrl;
-                    qrcodeImgElement.style.display = 'none';
-                    
-                    // 显示链接
-                    const container = document.querySelector('.qr-code-container');
-                    container.innerHTML = `
-                        <div style="padding: 20px; text-align: center;">
-                            <div style="color: red; margin-bottom: 10px;">二维码生成失败</div>
-                            <div style="color: black; margin-bottom: 15px;">请手动访问：</div>
-                            <div style="color: blue; word-break: break-all; font-size: 14px;">${joinPageUrl}</div>
-                            <div style="color: black; margin-top: 15px;">或联系工作人员获取链接</div>
-                        </div>
-                    `;
-                };
-                
-            } catch (error) {
-                console.error("生成二维码时出错:", error);
-            }
+            
+            console.log("UFI答题系统初始化完成！");
         }
 
         // 显示二维码界面
         function showQrCode() {
-            qrOverlayElement.style.display = 'flex';
-            updateParticipantCount();
+            // 生成二维码
+            const joinUrl = getJoinPageUrl();
+            console.log("生成二维码，指向:", joinUrl);
             
-            // 重新生成二维码（确保URL是最新的）
-            generateQRCode();
+            // 使用本地的QRCode生成器
+            const success = generateQRCode('qrcode-container', joinUrl, 250);
+            
+            if (success) {
+                qrOverlayElement.style.display = 'flex';
+                updateParticipantCount();
+            } else {
+                // 如果二维码生成失败，显示链接
+                qrcodeContainer.innerHTML = `
+                    <div style="color: black; text-align: center; padding: 20px;">
+                        <div style="color: red; margin-bottom: 10px;">二维码生成失败</div>
+                        <div style="margin-bottom: 15px;">请手动访问以下链接：</div>
+                        <div style="color: blue; word-break: break-all; font-size: 14px; margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                            ${joinUrl}
+                        </div>
+                        <div style="margin-top: 15px;">请复制链接发送给参会者</div>
+                    </div>
+                `;
+                qrOverlayElement.style.display = 'flex';
+            }
         }
 
         // 隐藏二维码界面
@@ -837,37 +912,7 @@
             if (newCount > oldCount) {
                 updateParticipantCount();
                 updateRanking();
-                
-                // 显示新用户通知
-                const newUser = users[users.length - 1];
-                showNewUserNotification(newUser.name);
             }
-        }
-
-        // 显示新用户加入通知
-        function showNewUserNotification(userName) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 100px;
-                right: 20px;
-                background: linear-gradient(90deg, #00cc66, #00994d);
-                color: white;
-                padding: 15px 25px;
-                border-radius: 10px;
-                font-size: 1.6rem;
-                z-index: 1001;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-                animation: slideIn 0.5s ease-out;
-            `;
-            
-            notification.innerHTML = `<i class="fas fa-user-plus"></i> ${userName} 加入了UFI知识挑战赛`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.5s ease-out';
-                setTimeout(() => notification.remove(), 500);
-            }, 3000);
         }
 
         // 更新参与者计数
@@ -881,20 +926,16 @@
         function loadQuestion(index) {
             const question = questions[index];
             isAnswered = false;
-            startTime = Date.now(); // 记录题目开始时间
+            startTime = Date.now();
             
-            // 更新题目信息
             questionNumberElement.textContent = `第 ${index + 1} 题`;
             questionTypeElement.textContent = question.type;
             questionTextElement.textContent = question.question;
             
-            // 检查是否为多选题
             isMultiChoice = question.type === "多选题";
             
-            // 清空答案区域
             answersSectionElement.innerHTML = '';
             
-            // 添加答案选项
             question.answers.forEach((answer, i) => {
                 const answerElement = document.createElement('div');
                 answerElement.className = 'answer';
@@ -904,27 +945,16 @@
                 answersSectionElement.appendChild(answerElement);
             });
             
-            // 添加计分说明
-            const scoreInfo = document.createElement('div');
-            scoreInfo.className = 'score-info';
-            scoreInfo.textContent = `每题${BASE_SCORE_PER_QUESTION}分 | 答题越快得分越高`;
-            scoreInfo.id = 'score-info';
-            answersSectionElement.parentNode.appendChild(scoreInfo);
-            
-            // 更新进度条
             progressFillElement.style.width = `${((index + 1) / questions.length) * 100}%`;
             
-            // 重置定时器
             timerValue = 30;
             timerElement.textContent = timerValue;
             timerElement.classList.remove('pulse');
             
-            // 禁用下一题按钮
             nextBtnElement.disabled = true;
             nextBtnElement.style.opacity = '0.5';
             nextBtnElement.style.cursor = 'not-allowed';
             
-            // 如果是多选题，更新UI提示
             if (isMultiChoice) {
                 const hint = document.createElement('div');
                 hint.style.textAlign = 'center';
@@ -935,28 +965,7 @@
                 answersSectionElement.parentNode.insertBefore(hint, answersSectionElement.nextSibling);
             }
             
-            // 重置所有用户的当前答案
             users.forEach(user => user.currentAnswer = null);
-        }
-
-        // 计算答题得分（考虑时间因素）
-        function calculateScore(answerTime) {
-            // 基础分20分
-            let score = BASE_SCORE_PER_QUESTION;
-            
-            // 时间奖励：答题时间越短，奖励越高
-            // 满分30秒，每提前1秒增加1分，最多加10分
-            const timeBonus = Math.max(0, Math.min(10, 30 - answerTime));
-            score += timeBonus;
-            
-            return score;
-        }
-
-        // 计算答题所用时间（秒）
-        function getAnswerTime() {
-            const endTime = Date.now();
-            const timeElapsed = Math.floor((endTime - startTime) / 1000); // 转换为秒
-            return Math.min(30, timeElapsed); // 最大30秒
         }
 
         // 选择答案
@@ -964,70 +973,43 @@
             if (isAnswered) return;
             
             const selectedIndex = parseInt(answerElement.dataset.index);
-            const answerTime = getAnswerTime(); // 获取答题时间
+            const answerTime = Math.min(30, Math.floor((Date.now() - startTime) / 1000));
             
-            // 如果是单选题
             if (!isMultiChoice) {
-                // 移除所有选项的选择状态
                 document.querySelectorAll('.answer').forEach(el => {
                     el.classList.remove('selected');
                 });
                 
-                // 设置当前选择
                 answerElement.classList.add('selected');
-                
-                // 模拟用户答题
                 simulateUserAnswers(selectedIndex, answerTime);
-                
-                // 显示正确答案
                 showCorrectAnswer();
             } else {
-                // 多选题：切换选择状态
                 answerElement.classList.toggle('selected');
-                
-                // 获取所有已选择的选项
                 const selectedIndices = Array.from(document.querySelectorAll('.answer.selected'))
                     .map(el => parseInt(el.dataset.index));
                 
-                // 如果至少选择了一个选项，模拟用户答题
                 if (selectedIndices.length > 0) {
-                    const answerTime = getAnswerTime();
                     simulateUserAnswers(selectedIndices, answerTime);
                 }
             }
         }
 
-        // 模拟用户答题（带时间参数）
+        // 模拟用户答题
         function simulateUserAnswers(selectedIndex, answerTime) {
-            // 随机为每个用户分配答案
             users.forEach(user => {
-                // 80%的用户会答题，20%可能不答
                 if (Math.random() < 0.8) {
                     if (isMultiChoice) {
-                        // 多选题：随机选择部分选项
                         const correctIndices = questions[currentQuestion].correct;
                         const userAnswer = [];
                         
-                        // 用户有一定概率答对
                         const isCorrect = Math.random() < 0.6;
                         
                         if (isCorrect) {
-                            // 答对的情况
                             userAnswer.push(...correctIndices);
-                            // 可能额外选择一些错误选项
-                            if (Math.random() < 0.3) {
-                                const allIndices = Array.from({length: questions[currentQuestion].answers.length}, (_, i) => i);
-                                const wrongIndices = allIndices.filter(i => !correctIndices.includes(i));
-                                if (wrongIndices.length > 0) {
-                                    userAnswer.push(wrongIndices[Math.floor(Math.random() * wrongIndices.length)]);
-                                }
-                            }
                         } else {
-                            // 答错的情况
                             const allIndices = Array.from({length: questions[currentQuestion].answers.length}, (_, i) => i);
                             const randomCount = Math.min(1 + Math.floor(Math.random() * 3), allIndices.length);
                             
-                            // 随机选择选项
                             for (let i = 0; i < randomCount; i++) {
                                 const randomIndex = Math.floor(Math.random() * allIndices.length);
                                 userAnswer.push(allIndices[randomIndex]);
@@ -1035,11 +1017,9 @@
                             }
                         }
                         
-                        user.currentAnswer = [...new Set(userAnswer)]; // 去重
+                        user.currentAnswer = [...new Set(userAnswer)];
                     } else {
-                        // 单选题
                         const correctIndex = questions[currentQuestion].correct;
-                        // 用户有一定概率答对
                         const isCorrect = Math.random() < 0.7;
                         user.currentAnswer = isCorrect ? correctIndex : 
                             (selectedIndex + 1) % questions[currentQuestion].answers.length;
@@ -1047,35 +1027,25 @@
                     
                     user.answered++;
                     
-                    // 检查答案是否正确
                     const isCorrect = checkAnswer(user.currentAnswer);
                     if (isCorrect) {
                         user.correct++;
-                        // 计算得分（考虑时间）
-                        const userAnswerTime = Math.floor(answerTime * (0.8 + Math.random() * 0.4)); // 模拟不同用户的答题时间
+                        const userAnswerTime = Math.floor(answerTime * (0.8 + Math.random() * 0.4));
                         const questionScore = calculateScore(userAnswerTime);
                         user.score += questionScore;
                         
-                        // 记录答题时间（用于排名）
                         if (!user.answerTimes) user.answerTimes = [];
                         user.answerTimes.push(userAnswerTime);
-                        
-                        // 更新用户平均时间
                         user.avgTime = user.answerTimes.reduce((a, b) => a + b, 0) / user.answerTimes.length;
                     }
                 } else {
-                    // 用户未答题
                     user.currentAnswer = null;
                 }
             });
             
-            // 保存用户数据
             saveUsersToStorage();
-            
-            // 更新排名（考虑分数和时间）
             updateRanking();
             
-            // 如果不是多选题，自动显示答案
             if (!isMultiChoice) {
                 isAnswered = true;
                 nextBtnElement.disabled = false;
@@ -1086,12 +1056,19 @@
             }
         }
 
-        // 检查答案是否正确
+        // 计算得分
+        function calculateScore(answerTime) {
+            let score = BASE_SCORE_PER_QUESTION;
+            const timeBonus = Math.max(0, Math.min(10, 30 - answerTime));
+            score += timeBonus;
+            return score;
+        }
+
+        // 检查答案
         function checkAnswer(userAnswer) {
             const correctAnswer = questions[currentQuestion].correct;
             
             if (isMultiChoice) {
-                // 多选题：检查数组是否相等
                 if (!Array.isArray(userAnswer) || userAnswer.length !== correctAnswer.length) {
                     return false;
                 }
@@ -1101,7 +1078,6 @@
                 
                 return JSON.stringify(sortedUserAnswer) === JSON.stringify(sortedCorrectAnswer);
             } else {
-                // 单选题
                 return userAnswer === correctAnswer;
             }
         }
@@ -1112,44 +1088,24 @@
             const answerElements = document.querySelectorAll('.answer');
             
             if (isMultiChoice) {
-                // 多选题：标记所有正确选项
                 correctAnswer.forEach(index => {
                     answerElements[index].classList.add('correct');
                 });
                 
-                // 标记用户选择的错误选项
                 answerElements.forEach((el, index) => {
                     if (el.classList.contains('selected') && !correctAnswer.includes(index)) {
                         el.classList.add('wrong');
                     }
                 });
             } else {
-                // 单选题：标记正确答案
                 answerElements[correctAnswer].classList.add('correct');
                 
-                // 标记错误答案（如果用户选错了）
                 answerElements.forEach((el, index) => {
                     if (el.classList.contains('selected') && index !== correctAnswer) {
                         el.classList.add('wrong');
                     }
                 });
             }
-            
-            // 显示解释
-            const explanation = document.createElement('div');
-            explanation.style.cssText = `
-                margin-top: 30px;
-                padding: 20px;
-                background-color: rgba(0,0,0,0.3);
-                border-radius: 15px;
-                font-size: 1.8rem;
-                color: #ffdd00;
-            `;
-            explanation.textContent = `正确答案解释: ${questions[currentQuestion].explanation}`;
-            
-            // 插入解释
-            const parent = answersSectionElement.parentNode;
-            parent.insertBefore(explanation, answersSectionElement.nextSibling);
         }
 
         // 开始倒计时
@@ -1163,12 +1119,10 @@
                 timerValue--;
                 timerElement.textContent = timerValue;
                 
-                // 最后10秒闪烁效果
                 if (timerValue <= 10) {
                     timerElement.classList.add('pulse');
                 }
                 
-                // 时间到
                 if (timerValue <= 0) {
                     clearInterval(timerInterval);
                     timeUp();
@@ -1181,54 +1135,24 @@
             if (isAnswered) return;
             
             isAnswered = true;
-            const answerTime = getAnswerTime(); // 获取答题时间
             
-            // 为未答题的用户记录
             users.forEach(user => {
                 if (user.currentAnswer === null) {
                     user.answered++;
                 }
             });
             
-            // 保存数据
             saveUsersToStorage();
-            
-            // 显示正确答案
             showCorrectAnswer();
             
-            // 启用下一题按钮
             nextBtnElement.disabled = false;
             nextBtnElement.style.opacity = '1';
             nextBtnElement.style.cursor = 'pointer';
-            
-            // 更新排名
             updateRanking();
         }
 
-        // 计算综合排名分数（考虑分数和时间）
-        function calculateRankingScore(user) {
-            // 基础：总分
-            let rankingScore = user.score;
-            
-            // 时间因素：平均答题时间越短，加分越多
-            if (user.avgTime && user.answered > 0) {
-                // 平均时间越短，加分越多（30秒为满分，每少1秒加1分）
-                const timeBonus = Math.max(0, 30 - user.avgTime);
-                rankingScore += timeBonus * 2; // 时间权重加倍
-            }
-            
-            // 准确率因素：正确率越高，加分越多
-            if (user.answered > 0) {
-                const accuracy = user.correct / user.answered;
-                rankingScore += accuracy * 50; // 准确率权重
-            }
-            
-            return rankingScore;
-        }
-
-        // 更新排名（考虑分数和时间）
+        // 更新排名
         function updateRanking() {
-            // 如果没有用户，显示提示
             if (users.length === 0) {
                 rankingListElement.innerHTML = `
                     <div class="ranking-item">
@@ -1243,39 +1167,40 @@
                 return;
             }
             
-            // 计算每个用户的综合排名分数
+            // 计算排名分数
             users.forEach(user => {
-                user.rankingScore = calculateRankingScore(user);
+                let rankingScore = user.score;
+                if (user.avgTime && user.answered > 0) {
+                    const timeBonus = Math.max(0, 30 - user.avgTime);
+                    rankingScore += timeBonus * 2;
+                }
+                if (user.answered > 0) {
+                    const accuracy = user.correct / user.answered;
+                    rankingScore += accuracy * 50;
+                }
+                user.rankingScore = rankingScore;
             });
             
-            // 按综合排名分数排序
             const sortedUsers = [...users].sort((a, b) => {
-                // 首先按综合排名分数排序
                 if (b.rankingScore !== a.rankingScore) {
                     return b.rankingScore - a.rankingScore;
                 }
-                // 如果综合分数相同，按原始分数排序
                 if (b.score !== a.score) {
                     return b.score - a.score;
                 }
-                // 如果分数也相同，按平均答题时间排序（时间短的优先）
                 return (a.avgTime || 30) - (b.avgTime || 30);
             });
             
-            // 清空排名列表
             rankingListElement.innerHTML = '';
             
-            // 添加排名项
             sortedUsers.forEach((user, index) => {
                 const rankingItem = document.createElement('div');
                 rankingItem.className = 'ranking-item';
                 
-                // 排名
                 const rankElement = document.createElement('div');
                 rankElement.className = `rank rank-${index + 1}`;
                 rankElement.textContent = index + 1;
                 
-                // 用户信息
                 const userInfoElement = document.createElement('div');
                 userInfoElement.className = 'user-info';
                 
@@ -1294,12 +1219,10 @@
                 userInfoElement.appendChild(userNameElement);
                 userInfoElement.appendChild(userTimeElement);
                 
-                // 分数
                 const scoreElement = document.createElement('div');
                 scoreElement.className = 'score';
                 scoreElement.textContent = user.score;
                 
-                // 组装
                 rankingItem.appendChild(rankElement);
                 rankingItem.appendChild(userInfoElement);
                 rankingItem.appendChild(scoreElement);
@@ -1310,22 +1233,16 @@
 
         // 下一题
         function nextQuestion() {
-            // 切换到下一题
             currentQuestion++;
             
             if (currentQuestion >= questions.length) {
-                // 所有题目已回答完毕
                 endGame();
                 return;
             }
             
-            // 加载下一题
             loadQuestion(currentQuestion);
-            
-            // 重启定时器
             startTimer();
             
-            // 禁用下一题按钮
             nextBtnElement.disabled = true;
             nextBtnElement.style.opacity = '0.5';
             nextBtnElement.style.cursor = 'not-allowed';
@@ -1338,14 +1255,7 @@
             questionTextElement.textContent = "恭喜完成UFI知识挑战赛！";
             answersSectionElement.innerHTML = '';
             
-            const sortedUsers = [...users].sort((a, b) => {
-                // 按最终排名规则排序
-                if (b.rankingScore !== a.rankingScore) {
-                    return b.rankingScore - a.rankingScore;
-                }
-                return b.score - a.score;
-            });
-            
+            const sortedUsers = [...users].sort((a, b) => b.score - a.score);
             const topThree = sortedUsers.slice(0, 3);
             
             const winnerAnnouncement = document.createElement('div');
@@ -1366,38 +1276,6 @@
             
             winnerAnnouncement.innerHTML = winnerText;
             answersSectionElement.appendChild(winnerAnnouncement);
-            
-            // 显示所有参赛者成绩
-            if (sortedUsers.length > 0) {
-                const allResults = document.createElement('div');
-                allResults.style.cssText = `
-                    margin-top: 40px;
-                    padding: 20px;
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 15px;
-                    max-height: 300px;
-                    overflow-y: auto;
-                `;
-                
-                sortedUsers.forEach((user, index) => {
-                    const resultItem = document.createElement('div');
-                    resultItem.style.cssText = `
-                        display: flex;
-                        justify-content: space-between;
-                        padding: 10px 0;
-                        border-bottom: 1px solid rgba(255,255,255,0.1);
-                    `;
-                    
-                    resultItem.innerHTML = `
-                        <span>${index + 1}. ${user.name}</span>
-                        <span>${user.score}分 (平均用时: ${user.avgTime ? user.avgTime.toFixed(1) : '--'}秒)</span>
-                    `;
-                    
-                    allResults.appendChild(resultItem);
-                });
-                
-                answersSectionElement.appendChild(allResults);
-            }
             
             clearInterval(timerInterval);
             timerElement.textContent = "完成";
