@@ -290,6 +290,14 @@
             box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
         }
         
+        .control-btn.clear-users {
+            background: linear-gradient(90deg, #f39c12, #e67e22);
+        }
+        
+        .control-btn.clear-users:hover {
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+        }
+        
         .qr-overlay {
             position: fixed;
             top: 0;
@@ -309,7 +317,7 @@
             border-radius: 25px;
             padding: 40px;
             text-align: center;
-            max-width: 600px;
+            max-width: 650px;
             width: 90%;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
             border: 3px solid rgba(255, 221, 0, 0.5);
@@ -340,6 +348,49 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+        }
+        
+        .qr-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .qr-control-btn {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .qr-control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .qr-control-btn.refresh {
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+        }
+        
+        .qr-control-btn.refresh:hover {
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+        
+        .qr-control-btn.clear {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+        
+        .qr-control-btn.clear:hover {
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
         }
         
         .qr-instructions {
@@ -355,6 +406,26 @@
             padding: 15px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .qr-stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .qr-stat-label {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .qr-stat-value {
+            font-size: 2rem;
+            color: #ffdd00;
+            font-weight: bold;
         }
         
         .close-qr-btn {
@@ -477,6 +548,15 @@
             to { transform: translateX(100%); opacity: 0; }
         }
         
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        
         @media (max-width: 1200px) {
             .question-text {
                 font-size: 2.2rem;
@@ -524,6 +604,10 @@
                 flex-direction: column;
                 gap: 10px;
             }
+            
+            .qr-controls {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -537,6 +621,15 @@
             
             <div class="qr-title">扫码加入UFI答题挑战</div>
             <div class="qr-subtitle">扫描二维码，输入姓名参与UFI知识竞赛</div>
+            
+            <div class="qr-controls">
+                <button class="qr-control-btn refresh" id="refreshQrBtn">
+                    <i class="fas fa-sync-alt"></i> 刷新二维码
+                </button>
+                <button class="qr-control-btn clear" id="clearUsersBtn">
+                    <i class="fas fa-user-slash"></i> 清空在线人数
+                </button>
+            </div>
             
             <div class="qr-code-container" id="qrcode-container">
                 <!-- 二维码将通过JavaScript生成在这里 -->
@@ -558,7 +651,18 @@
             </div>
             
             <div class="qr-stats">
-                <i class="fas fa-users"></i> 已加入人数: <span id="participantCount">0</span> 人
+                <div class="qr-stat-item">
+                    <div class="qr-stat-label">已加入人数</div>
+                    <div class="qr-stat-value" id="participantCount">0</div>
+                </div>
+                <div class="qr-stat-item">
+                    <div class="qr-stat-label">在线人数</div>
+                    <div class="qr-stat-value" id="onlineCount">0</div>
+                </div>
+                <div class="qr-stat-item">
+                    <div class="qr-stat-label">最高分数</div>
+                    <div class="qr-stat-value" id="highestScore">0</div>
+                </div>
             </div>
         </div>
     </div>
@@ -623,8 +727,12 @@
             
             <div class="admin-panel">
                 <div class="participant-count">
-                    <i class="fas fa-users"></i> 参与: <span id="liveParticipantCount">0</span>
+                    <i class="fas fa-users"></i> 在线: <span id="liveParticipantCount">0</span>
                 </div>
+                
+                <button class="control-btn clear-users" id="clearOnlineBtn">
+                    <i class="fas fa-user-times"></i> 清空在线
+                </button>
                 
                 <button class="qr-show-btn" id="showQrBtn">
                     <i class="fas fa-qrcode"></i> 显示二维码
@@ -710,6 +818,7 @@
 
         // 用户数据
         let users = [];
+        let onlineUsers = new Set(); // 用于跟踪在线用户
 
         // 全局变量
         let currentQuestion = 0;
@@ -733,7 +842,12 @@
         const qrOverlayElement = document.getElementById('qrOverlay');
         const closeQrBtnElement = document.getElementById('closeQrBtn');
         const showQrBtnElement = document.getElementById('showQrBtn');
+        const refreshQrBtnElement = document.getElementById('refreshQrBtn');
+        const clearUsersBtnElement = document.getElementById('clearUsersBtn');
+        const clearOnlineBtnElement = document.getElementById('clearOnlineBtn');
         const participantCountElement = document.getElementById('participantCount');
+        const onlineCountElement = document.getElementById('onlineCount');
+        const highestScoreElement = document.getElementById('highestScore');
         const liveParticipantCountElement = document.getElementById('liveParticipantCount');
         const qrcodeContainer = document.getElementById('qrcode-container');
         const qrLoadingElement = document.getElementById('qr-loading');
@@ -746,22 +860,27 @@
             totalScoreElement.textContent = MAX_TOTAL_SCORE;
             loadQuestion(currentQuestion);
             startTimer();
+            
+            // 从本地存储加载已有用户
+            loadUsersFromStorage();
             updateRanking();
+            updateParticipantCount();
+            updateOnlineUsers();
             
             // 添加事件监听
             resetBtnElement.addEventListener('click', resetGame);
             nextBtnElement.addEventListener('click', nextQuestion);
             closeQrBtnElement.addEventListener('click', hideQrCode);
             showQrBtnElement.addEventListener('click', showQrCode);
+            refreshQrBtnElement.addEventListener('click', refreshQRCode);
+            clearUsersBtnElement.addEventListener('click', clearAllUsers);
+            clearOnlineBtnElement.addEventListener('click', clearOnlineUsers);
             
-            // 从本地存储加载已有用户
-            loadUsersFromStorage();
-            
-            // 更新参与者计数
-            updateParticipantCount();
-            
-            // 每3秒检查新用户
-            setInterval(checkForNewUsers, 3000);
+            // 每3秒检查新用户和更新在线状态
+            setInterval(() => {
+                checkForNewUsers();
+                updateOnlineUsers();
+            }, 3000);
             
             // 页面加载3秒后自动显示二维码界面
             setTimeout(() => {
@@ -804,16 +923,40 @@
             qrUrlDisplayElement.textContent = joinUrl;
             qrUrlDisplayElement.style.display = 'block';
             
-            // 尝试生成简单的二维码
-            generateSimpleQRCode(joinUrl);
+            // 生成二维码
+            generateQRCode(joinUrl);
             
             // 显示二维码界面
             qrOverlayElement.style.display = 'flex';
-            updateParticipantCount();
+            updateQRStats();
         }
 
-        // 生成简单的二维码
-        function generateSimpleQRCode(text) {
+        // 刷新二维码
+        function refreshQRCode() {
+            console.log("刷新二维码...");
+            
+            // 显示加载状态
+            qrLoadingElement.style.display = 'block';
+            qrLoadingElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在刷新二维码...';
+            qrcodeContainer.innerHTML = '';
+            qrcodeContainer.appendChild(qrLoadingElement);
+            
+            // 获取新的加入页面URL
+            const joinUrl = getJoinPageUrl();
+            
+            // 添加随机参数确保二维码不同
+            const timestamp = Date.now();
+            const refreshedUrl = joinUrl + (joinUrl.includes('?') ? '&' : '?') + 't=' + timestamp;
+            
+            // 重新生成二维码
+            setTimeout(() => {
+                generateQRCode(refreshedUrl);
+                showNotification("二维码已刷新", "success");
+            }, 500);
+        }
+
+        // 生成二维码
+        function generateQRCode(text) {
             try {
                 // 创建canvas
                 const canvas = document.createElement('canvas');
@@ -876,6 +1019,11 @@
                 ctx.fillStyle = '#666666';
                 ctx.font = '14px Arial';
                 ctx.fillText('扫描加入答题', 125, 240);
+                
+                // 添加刷新时间
+                ctx.fillStyle = '#999999';
+                ctx.font = '10px Arial';
+                ctx.fillText('刷新于: ' + new Date().toLocaleTimeString(), 125, 260);
                 
                 // 隐藏加载提示，显示二维码
                 qrLoadingElement.style.display = 'none';
@@ -945,6 +1093,50 @@
             }
         }
 
+        // 更新在线用户
+        function updateOnlineUsers() {
+            // 模拟在线用户检测（实际应用中应该有心跳检测）
+            const now = Date.now();
+            const onlineThreshold = 30000; // 30秒内活跃的视为在线
+            
+            // 检查用户最近活跃时间
+            users.forEach(user => {
+                if (user.lastActive && (now - user.lastActive) < onlineThreshold) {
+                    onlineUsers.add(user.id);
+                } else if (user.joinedAt && (now - new Date(user.joinedAt).getTime()) < onlineThreshold) {
+                    onlineUsers.add(user.id);
+                }
+            });
+            
+            // 更新在线人数显示
+            onlineCountElement.textContent = onlineUsers.size;
+            liveParticipantCountElement.textContent = onlineUsers.size;
+        }
+
+        // 清空所有用户
+        function clearAllUsers() {
+            if (confirm("确定要清空所有用户数据吗？这将删除所有已加入的用户，无法恢复！")) {
+                users = [];
+                onlineUsers.clear();
+                saveUsersToStorage();
+                updateRanking();
+                updateParticipantCount();
+                updateOnlineUsers();
+                updateQRStats();
+                showNotification("所有用户数据已清空", "success");
+            }
+        }
+
+        // 清空在线用户
+        function clearOnlineUsers() {
+            if (confirm("确定要清空在线用户吗？这将重置在线人数统计。")) {
+                onlineUsers.clear();
+                updateOnlineUsers();
+                updateQRStats();
+                showNotification("在线用户已清空", "success");
+            }
+        }
+
         // 检查新用户加入
         function checkForNewUsers() {
             const oldCount = users.length;
@@ -954,6 +1146,7 @@
             if (newCount > oldCount) {
                 updateParticipantCount();
                 updateRanking();
+                updateQRStats();
                 
                 // 显示新用户通知
                 if (newCount > 0 && oldCount > 0) {
@@ -965,12 +1158,19 @@
 
         // 显示新用户加入通知
         function showNewUserNotification(userName) {
+            showNotification(`${userName} 加入了比赛`, "info");
+        }
+
+        // 显示通知
+        function showNotification(message, type = "info") {
             const notification = document.createElement('div');
             notification.style.cssText = `
                 position: fixed;
                 top: 100px;
                 right: 20px;
-                background: linear-gradient(90deg, #00cc66, #00994d);
+                background: ${type === 'success' ? 'linear-gradient(90deg, #00cc66, #00994d)' : 
+                          type === 'error' ? 'linear-gradient(90deg, #e74c3c, #c0392b)' : 
+                          'linear-gradient(90deg, #3498db, #2980b9)'};
                 color: white;
                 padding: 15px 25px;
                 border-radius: 10px;
@@ -980,7 +1180,9 @@
                 animation: slideIn 0.5s ease-out;
             `;
             
-            notification.innerHTML = `<i class="fas fa-user-plus"></i> ${userName} 加入了比赛`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 
+                                                         type === 'error' ? 'exclamation-circle' : 
+                                                         'info-circle'}"></i> ${message}`;
             document.body.appendChild(notification);
             
             setTimeout(() => {
@@ -993,7 +1195,16 @@
         function updateParticipantCount() {
             const count = users.length;
             participantCountElement.textContent = count;
-            liveParticipantCountElement.textContent = count;
+        }
+
+        // 更新二维码统计信息
+        function updateQRStats() {
+            participantCountElement.textContent = users.length;
+            onlineCountElement.textContent = onlineUsers.size;
+            
+            // 计算最高分数
+            const highestScore = users.length > 0 ? Math.max(...users.map(user => user.score || 0)) : 0;
+            highestScoreElement.textContent = highestScore;
         }
 
         // 加载题目
@@ -1039,7 +1250,10 @@
                 answersSectionElement.parentNode.insertBefore(hint, answersSectionElement.nextSibling);
             }
             
-            users.forEach(user => user.currentAnswer = null);
+            users.forEach(user => {
+                user.currentAnswer = null;
+                user.lastActive = Date.now(); // 更新用户活跃时间
+            });
         }
 
         // 选择答案
@@ -1100,6 +1314,7 @@
                     }
                     
                     user.answered++;
+                    user.lastActive = Date.now(); // 更新活跃时间
                     
                     const isCorrect = checkAnswer(user.currentAnswer);
                     if (isCorrect) {
@@ -1119,6 +1334,8 @@
             
             saveUsersToStorage();
             updateRanking();
+            updateOnlineUsers();
+            updateQRStats();
             
             if (!isMultiChoice) {
                 isAnswered = true;
@@ -1213,6 +1430,7 @@
             users.forEach(user => {
                 if (user.currentAnswer === null) {
                     user.answered++;
+                    user.lastActive = Date.now();
                 }
             });
             
@@ -1223,6 +1441,8 @@
             nextBtnElement.style.opacity = '1';
             nextBtnElement.style.cursor = 'pointer';
             updateRanking();
+            updateOnlineUsers();
+            updateQRStats();
         }
 
         // 更新排名
@@ -1360,11 +1580,12 @@
 
         // 重置游戏
         function resetGame() {
-            if (confirm("确定要重置比赛吗？所有数据将被清空。")) {
+            if (confirm("确定要重置比赛吗？所有答题进度将被清空，但用户数据保留。")) {
                 currentQuestion = 0;
                 timerValue = 30;
                 isAnswered = false;
                 
+                // 只重置答题进度，不清除用户数据
                 users.forEach(user => {
                     user.score = 0;
                     user.correct = 0;
@@ -1379,7 +1600,7 @@
                 loadQuestion(0);
                 startTimer();
                 updateRanking();
-                updateParticipantCount();
+                updateQRStats();
             }
         }
 
